@@ -31,6 +31,10 @@ jobs:
         echo "84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/.android/licenses/android-sdk-preview-license
         echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/.android/licenses/android-sdk-license
 
+    - name: Clean BOM from buildozer.spec
+      # התיקון: מנקים את התו הנסתר ש-Windows הוסיף לקובץ
+      run: sed -i '1s/^\xEF\xBB\xBF//' buildozer.spec
+
     - name: Build APK with Buildozer
       run: |
         buildozer -v android debug
