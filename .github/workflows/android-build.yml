@@ -57,21 +57,14 @@ jobs:
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
+        buildozer -v android debug
 
-        # התיקון: שומרים את כל הפלט לקובץ build_log.txt
-        buildozer -v android debug 2>&1 | tee build_log.txt
+    - name: List files to find APK
+      # התיקון: מוסיפים שלב שמדפיס את כל הקבצים כדי לראות איפה ה-APK
+      run: ls -R
 
-    - name: Upload APK on Success
-      if: success()
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: MyApp-debug.apk
         path: bin/*.apk
-
-    - name: Upload Build Log on Failure
-      # שלב זה ירוץ רק אם הבנייה נכשלת
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-log-on-failure
-        path: build_log.txt
