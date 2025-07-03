@@ -1,53 +1,63 @@
 name: Android CI
+
 on:
   push:
     branches: [ main ]
+
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-    container:
-      image: kivy/kivy-android:latest
+
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk  # מיקום ה-SDK המובנה של GitHub Actions
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Create complete buildozer.spec
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
       run: |
-        cat > buildozer.spec << 'SPEC'
-        [buildozer]
-        warn_on_root = 0
-        log_level = 2
-        [app]
-        title = MyApp
-        package.name = myapp
-        package.domain = com.example
-        source.dir = .
-        source.include_exts = py,png,jpg,kv,atlas
-        version = 1.0.0
-        requirements = python3,kivy
-        orientation = portrait
-        fullscreen = 0
-        android.api = 33
-        android.minapi = 21
-        android.sdk_path = /home/kivy/.buildozer/android/platform/android-sdk
-        android.ndk_path = /home/kivy/.buildozer/android/platform/android-ndk-r25b
-        android.sdk_build_tools = 34.0.0
-        android.permissions = INTERNET
-        android.arch = armeabi-v7a
-        p4a.branch = master
-        SPEC
-    - name: Pre-accept Android licenses
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache
+
+    - name: Install Buildozer and dependencies
       run: |
-        mkdir -p /home/kivy/.android
-        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > /home/kivy/.android/licenses/android-sdk-license
-        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> /home/kivy/.android/licenses/android-sdk-license
-        echo "84831b9409646a918e30573bab4c9c91346d8abd" > /home/kivy/.android/licenses/android-sdk-preview-license
-    - name: Build APK with Buildozer
+        python -m pip install --upgrade pip
+        pip install buildozer cython==0.29.36 pyjnius==1.6.1
+
+    - name: Configure and build APK with Buildozer
       run: |
-        pip install setuptools==65.5.0
-        buildozer -v android debug
+        # יצירת קובץ buildozer.spec חדש
+        buildozer init
+
+        # עדכון הגדרות בסיסיות
+        sed -i "s/^title = .*/title = MyApp/" buildozer.spec
+        sed -i "s/^package.name = .*/package.name = myapp/" buildozer.spec
+        sed -i "s/^package.domain = .*/package.domain = com.example/" buildozer.spec
+
+        # הגדרת ה-SDK המובנה והגרסאות המדויקות
+        echo "android.sdk_path = $ANDROID_HOME" >> buildozer.spec
+        echo "android.accept_sdk_license = True" >> buildozer.spec
+        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
+        echo "android.api = 33" >> buildozer.spec
+        echo "android.ndk = 25.2.9519653" >> buildozer.spec
+
+        # הרצת הבנייה עם דיבוג מלא
+        buildozer -v android debug --log-level=2
+
+    - name: Move APK to bin directory
+      run: |
+        mkdir -p bin
+        mv *.apk bin/
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: MyApp-debug.apk
+        name: MyApp-debug-apk
         path: bin/*.apk
