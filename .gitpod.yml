@@ -1,0 +1,15 @@
+image: mingc/android-build-box:latest
+
+tasks:
+  - init: |
+      pip install buildozer
+      buildozer init
+    command: |
+      yes | sdkmanager --licenses
+      buildozer android debug
+
+ports:
+  - port: 8080
+    onOpen: open-preview
+
+
