@@ -15,14 +15,15 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Dependencies
+    - name: Install All System and Compilation Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant
+        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
+        libltdl-dev libtool pkg-config autoconf automake
         python -m pip install --upgrade pip
         pip install 'buildozer==1.5.0' 'cython==0.29.36' 'pyjnius==1.6.1'
 
-    - name: Create Android environment
+    - name: Create a Local, Self-Contained Android Environment
       run: |
         mkdir -p "android_environment/sdk"
         wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
@@ -36,7 +37,7 @@ jobs:
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
         rm android-ndk.zip
 
-    - name: Create buildozer.spec
+    - name: Create buildozer.spec and Build
       run: |
         echo "[buildozer]" > buildozer.spec
         echo "warn_on_root = 0" >> buildozer.spec
@@ -51,27 +52,15 @@ jobs:
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
-        
+
         buildozer -v android debug
 
-    - name: Find and upload APK
-      run: |
-        # Find APK file wherever it is
-        APK_PATH=$(find . -name "*.apk" | head -1)
-        
-        if [ -z "$APK_PATH" ]; then
-          echo "::warning::No APK file found!"
-          exit 0
-        fi
-        
-        echo "Found APK at: $APK_PATH"
-        mkdir -p bin
-        cp "$APK_PATH" bin/
-        echo "APK_COPIED=bin/$(basename "$APK_PATH")" >> $GITHUB_ENV
+    - name: List files to find APK
+      if: always()
+      run: ls -R
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: MyApp-debug.apk
-        path: ${{ env.APK_COPIED }}
-
+        path: bin/*.apk
