@@ -52,8 +52,8 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
-        # התיקון: התעלמות רקורסיבית מכל הקבצים בתיקיית ה-NDK
-        echo "source.exclude_patterns = android_environment/ndk-r25b/**/*" >> buildozer.spec
+        # התיקון: מוסיפים גם את תיקיית ANT לרשימת ההתעלמות
+        echo "source.exclude_patterns = android_environment/ndk-r25b/**/*,android_environment/ant/**/*" >> buildozer.spec
         echo "requirements = python3,kivy" >> buildozer.spec
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
