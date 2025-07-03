@@ -1,0 +1,13 @@
+# Buildozer and local environment files
+.buildozer/
+bin/
+dist/
+android_environment/
+
+# Downloaded archives
+*.zip
+*.tar.gz
+
+# Python cache
+__pycache__/
+*.pyc

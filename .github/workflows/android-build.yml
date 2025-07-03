@@ -1,63 +1,72 @@
 name: Android CI
-
 on:
   push:
     branches: [ main ]
-
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk  # מיקום ה-SDK המובנה של GitHub Actions
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Python 3.11
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Install system dependencies
+    - name: Install Dependencies (including system ANT)
       run: |
         sudo apt-get update
-        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache
-
-    - name: Install Buildozer and dependencies
-      run: |
+        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
+        libltdl-dev libtool pkg-config autoconf automake
         python -m pip install --upgrade pip
-        pip install buildozer cython==0.29.36 pyjnius==1.6.1
+        pip install 'buildozer==1.5.0' 'cython==0.29.36' 'pyjnius==1.6.1'
 
-    - name: Configure and build APK with Buildozer
+    - name: Create a Local, Self-Contained Android Environment
       run: |
-        # יצירת קובץ buildozer.spec חדש
-        buildozer init
+        mkdir -p "android_environment/sdk"
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -o cmdline-tools.zip -d "android_environment/sdk"
+        mv "android_environment/sdk/cmdline-tools" "android_environment/sdk/tools"
+        rm cmdline-tools.zip
+        yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
+        android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
+        
+        wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
+        unzip -o android-ndk.zip -d "android_environment"
+        mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
+        rm android-ndk.zip
 
-        # עדכון הגדרות בסיסיות
-        sed -i "s/^title = .*/title = MyApp/" buildozer.spec
-        sed -i "s/^package.name = .*/package.name = myapp/" buildozer.spec
-        sed -i "s/^package.domain = .*/package.domain = com.example/" buildozer.spec
-
-        # הגדרת ה-SDK המובנה והגרסאות המדויקות
-        echo "android.sdk_path = $ANDROID_HOME" >> buildozer.spec
-        echo "android.accept_sdk_license = True" >> buildozer.spec
+    - name: Create buildozer.spec and Build
+      run: |
+        echo "[buildozer]" > buildozer.spec
+        echo "warn_on_root = 0" >> buildozer.spec
+        echo "[app]" >> buildozer.spec
+        echo "title = MyApp" >> buildozer.spec
+        echo "package.name = myapp" >> buildozer.spec
+        echo "package.domain = com.example" >> buildozer.spec
+        echo "version = 1.0.0" >> buildozer.spec
+        echo "source.dir = ." >> buildozer.spec
+        echo "source.exclude_patterns = android_environment/ndk-r25b/**/*" >> buildozer.spec
+        echo "requirements = python3,kivy" >> buildozer.spec
+        echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
+        echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
-        echo "android.ndk = 25.2.9519653" >> buildozer.spec
+        
+        buildozer -v android debug 2>&1 | tee build_log.txt
 
-        # הרצת הבנייה עם דיבוג מלא
-        buildozer -v android debug --log-level=2
-
-    - name: Move APK to bin directory
-      run: |
-        mkdir -p bin
-        mv *.apk bin/
-
-    - name: Upload APK
+    - name: Upload APK on Success
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: MyApp-debug-apk
+        name: MyApp-debug.apk
         path: bin/*.apk
+        
+    - name: Upload Build Log on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log-on-failure
+        path: build_log.txt
