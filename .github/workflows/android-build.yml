@@ -24,7 +24,6 @@ jobs:
 
     - name: Create a Local, Self-Contained Android Environment
       run: |
-        # 1. SDK
         mkdir -p "android_environment/sdk"
         wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
         unzip -o cmdline-tools.zip -d "android_environment/sdk"
@@ -33,23 +32,21 @@ jobs:
         yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
         android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
 
-        # 2. NDK
         wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
         unzip -o android-ndk.zip -d "android_environment"
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
         rm android-ndk.zip
 
-        # 3. ANT (התיקון)
         wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.tar.gz -O ant.tar.gz
         tar -xzf ant.tar.gz -C "android_environment"
         mv "android_environment/apache-ant-1.9.4" "android_environment/ant"
         rm ant.tar.gz
 
     - name: Create buildozer.spec and Build
-      # הוספת הנתיב של ANT המקומי ל-PATH רק עבור שלב הבנייה
-      env:
-        PATH: ${{ github.workspace }}/android_environment/ant/bin:${{ env.PATH }}
       run: |
+        # התיקון: מוסיפים את הנתיב של ANT המקומי ל-PATH הקיים
+        export PATH="$PWD/android_environment/ant/bin:$PATH"
+
         echo "[buildozer]" > buildozer.spec
         echo "warn_on_root = 0" >> buildozer.spec
         echo "[app]" >> buildozer.spec
