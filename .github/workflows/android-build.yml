@@ -15,10 +15,9 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install System and Python Dependencies
+    - name: Install All System and Compilation Dependencies
       run: |
         sudo apt-get update
-        # התיקון: אנחנו מתקינים את 'ant' ישירות מהמערכת
         sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
         libltdl-dev libtool pkg-config autoconf automake
         python -m pip install --upgrade pip
@@ -33,17 +32,18 @@ jobs:
         rm cmdline-tools.zip
         yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
         android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
-
         wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
         unzip -o android-ndk.zip -d "android_environment"
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
         rm android-ndk.zip
-
-        # התיקון: הסרנו את ההורדה הידנית של ANT
+        wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.tar.gz -O ant.tar.gz
+        tar -xzf ant.tar.gz -C "android_environment"
+        mv "android_environment/apache-ant-1.9.4" "android_environment/ant"
+        rm ant.tar.gz
 
     - name: Create buildozer.spec and Build
       run: |
-        # התיקון: אין יותר צורך לשנות את ה-PATH כי אנחנו משתמשים ב-ant של המערכת
+        export PATH="$PWD/android_environment/ant/bin:$PATH"
         echo "[buildozer]" > buildozer.spec
         echo "warn_on_root = 0" >> buildozer.spec
         echo "[app]" >> buildozer.spec
@@ -57,8 +57,11 @@ jobs:
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
-
         buildozer -v android debug
+
+    - name: List files to find APK
+      # התיקון: מוסיפים שלב שמדפיס את כל הקבצים כדי לראות איפה ה-APK
+      run: ls -R
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
