@@ -1,35 +1,77 @@
-# גרסת תיקון מלאה
-rm -f ~/Myapp/buildozer.spec
-cat > ~/Myapp/buildozer.spec << 'EOF'
-[buildozer]
-log_level = 2
+name: Android CI
 
-[app]
-title = MyApp
-package.name = myapp
-package.domain = com.example
-source.dir = .
-source.include_exts = py,png,jpg,kv,atlas
-version = 1.0.0
-requirements = python3,kivy==2.1.0,pyjnius==1.6.1
-orientation = portrait
-fullscreen = 0
-android.api = 33
-android.minapi = 21
-android.sdk_path = /data/data/com.termux/files/home/android_environment/sdk
-android.ndk_path = /data/data/com.termux/files/home/android_environment/ndk-r25b
-android.sdk_build_tools = 34.0.0
-android.accept_sdk_license = True
-android.archs = arm64-v8a,armeabi-v7a
-p4a.branch = master
-android.p4a_dir = /data/data/com.termux/files/home/.buildozer/android/platform/python-for-android
-android.allow_backup = true
-android.allow_storage_access = true
-android.enable_androidx = true
-EOF
+on:
+  push:
+    branches: [ main ]
 
-# הרצה עם הגדרות אופטימליות
-cd ~/Myapp
-CFLAGS="-I/data/data/com.termux/files/usr/include" \
-LDFLAGS="-L/data/data/com.termux/files/usr/lib" \
-buildozer -v android debug
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    env:
+      ANDROID_PLATFORM: "33"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev
+        sudo apt-get install -y zlib1g-dev libncurses5-dev ccache
+
+    - name: Set Android environment
+      run: |
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade setuptools wheel
+        pip install buildozer cython==0.29.36 pyjnius==1.6.1
+
+    - name: Build APK with Buildozer
+      run: |
+        buildozer init
+        cat <<EOT >> buildozer.spec
+        [app]
+        title = MyApp
+        package.name = myapp
+        package.domain = com.example
+        source.dir = .
+        source.include_exts = py,png,jpg,kv,atlas
+        version = 0.1
+        requirements = python3,kivy==2.1.0,pyjnius==1.6.1,android
+        orientation = portrait
+        fullscreen = 0
+        android.api = $ANDROID_PLATFORM
+        android.minapi = 21
+        android.ndk = 25.2.9519653
+        android.sdk_build_tools = 34.0.0
+        android.accept_sdk_license = True
+        p4a.branch = master
+        p4a.option = --ignore-setup-py
+        android.skip_compile = badsyntax_*.py,test/badsyntax_*.py,test/bad_coding*.py
+        EOT
+        buildozer -v android debug
+
+    - name: Move APK to bin directory
+      run: |
+        mkdir -p bin
+        mv *.apk bin/
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyApp-debug-apk
+        path: bin/*.apk
