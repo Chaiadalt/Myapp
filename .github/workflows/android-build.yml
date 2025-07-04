@@ -1,4 +1,4 @@
-name: Android CI - The Final Stand
+name: Android CI - The Final Build
 on:
   push:
     branches: [ main ]
@@ -15,7 +15,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install All System, Python, and Compilation Dependencies
+    - name: Install All Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
@@ -23,7 +23,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install 'buildozer==1.5.0' 'cython==3.0.10' 'pyjnius==1.6.1'
 
-    - name: Create a Local, Self-Contained Android Environment
+    - name: Create Self-Contained Android Environment
       run: |
         mkdir -p "android_environment/sdk"
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
@@ -47,31 +47,19 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
-        echo "source.include_exts = py,png,jpg,kv,atlas" >> buildozer.spec
+        # התיקון הסופי: להתעלם מתיקיית הסביבה שלנו
+        echo "source.exclude_patterns = android_environment, .buildozer, *.spec" >> buildozer.spec
         echo "requirements = python3,kivy" >> buildozer.spec
-        echo "orientation = portrait" >> buildozer.spec
-        echo "android.api = 33" >> buildozer.spec
-        echo "android.minapi = 21" >> buildozer.spec
-        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
-        echo "android.permissions = INTERNET" >> buildozer.spec
-        echo "android.archs = arm64-v8a, armeabi-v7a" >> buildozer.spec
-        echo "p4a.branch = master" >> buildozer.spec
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
+        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
+        echo "android.api = 33" >> buildozer.spec
 
-        buildozer -v android debug 2>&1 | tee build_log.txt
+        buildozer -v android debug
 
-    - name: List all files to find the APK
-      if: always()
-      run: ls -R
-
-    - name: Upload Artifacts
-      if: always()
+    - name: Upload Final APK
       uses: actions/upload-artifact@v4
       with:
-        name: Build-Outputs
-        path: |
-          **/*.apk
-          **/*.aab
-          build_log.txt
-        if-no-files-found: ignore
+        name: MyApp-debug-APK
+        path: "**/*.apk"
+        if-no-files-found: error
