@@ -1,20 +1,18 @@
-﻿[buildozer]
-warn_on_root = 0
-log_level = 2
-
 [app]
-title = My Final App
-package.name = myfinalapp
-package.domain = com.final.app
+title = My App
+package.name = myapp
+package.domain = org.test
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
-version = 1.0.0
-requirements = python3,kivy
+version = 0.1
+requirements = python3,kivy==2.1.0,libffi,openssl,sqlite3,cython==0.29.33
 orientation = portrait
+icon.filename = %(source.dir)s/data/icon.png
+presplash.filename = %(source.dir)s/data/presplash.png
 fullscreen = 0
-android.api = 33
-android.minapi = 21
-android.sdk_build_tools = 34.0.0
-android.permissions = INTERNET
-android.archs = arm64-v8a, armeabi-v7a
-p4a.branch = master
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+
+
