@@ -1,14 +1,12 @@
-name: Android CI with APK Detection
 
+ name: Android CI - The Final Stand
 on:
   push:
     branches: [ main ]
-
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -18,13 +16,13 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install All System and Compilation Dependencies
+    - name: Install All System, Python, and Compilation Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
         libltdl-dev libtool pkg-config autoconf automake
         python -m pip install --upgrade pip
-        pip install 'buildozer==1.5.0' 'cython==0.29.36' 'pyjnius==1.6.1'
+        pip install 'buildozer==1.5.0' 'cython==3.0.10' 'pyjnius==1.6.1'
 
     - name: Create a Local, Self-Contained Android Environment
       run: |
@@ -50,28 +48,31 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
+        echo "source.include_exts = py,png,jpg,kv,atlas" >> buildozer.spec
         echo "requirements = python3,kivy" >> buildozer.spec
+        echo "orientation = portrait" >> buildozer.spec
+        echo "android.api = 33" >> buildozer.spec
+        echo "android.minapi = 21" >> buildozer.spec
+        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
+        echo "android.permissions = INTERNET" >> buildozer.spec
+        echo "android.archs = arm64-v8a, armeabi-v7a" >> buildozer.spec
+        echo "p4a.branch = master" >> buildozer.spec
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
-        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
-        echo "android.api = 33" >> buildozer.spec
-        buildozer -v android debug
 
-    - name: 🕵️ Find the APK - The Detective Step
+        buildozer -v android debug 2>&1 | tee build_log.txt
+
+    - name: List all files to find the APK
       if: always()
-      run: |
-        echo "Listing all files in the project directory:"
-        ls -R
-        echo "Searching for .apk files:"
-        find . -name "*.apk"
+      run: ls -R
 
-    - name: Upload APK if found
+    - name: Upload Artifacts
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: MyApp-debug.apk
+        name: Build-Outputs
         path: |
-          bin/*.apk
           **/*.apk
-        if-no-files-found: warn
-
-
+          **/*.aab
+          build_log.txt
+        if-no-files-found: ignore
