@@ -27,6 +27,13 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: '11'
+    
+    - name: Grant Execute Permissions to build-tools
+      run: |
+        chmod +x $ANDROID_HOME/build-tools/34.0.0/aapt
+        chmod +x $ANDROID_HOME/build-tools/34.0.0/aapt2
+        chmod +x $ANDROID_HOME/build-tools/34.0.0/zipalign
+        chmod +x $ANDROID_HOME/build-tools/34.0.0/apksigner
 
     - name: Build with Buildozer
       run: |
@@ -38,5 +45,6 @@ jobs:
       with:
         name: package
         path: bin/*.apk
+
 
 
