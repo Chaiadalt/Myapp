@@ -1,118 +1,35 @@
-#!/bin/bash
+# גרסת תיקון מלאה
+rm -f ~/Myapp/buildozer.spec
+cat > ~/Myapp/buildozer.spec << 'EOF'
+[buildozer]
+log_level = 2
 
-# Create the fixed workflow
-cat > fixed_workflow.yml << 'EOF'
-name: Android CI
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  build-android:
-    name: Build Android APK
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant
-
-      - name: Setup Android SDK
-        run: |
-          mkdir -p $HOME/android-sdk
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip -o cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          rm cmdline-tools.zip
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-
-          # Accept licenses manually
-          mkdir -p $HOME/.android/licenses
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $HOME/.android/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/.android/licenses/android-sdk-license
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/.android/licenses/android-sdk-preview-license
-
-      - name: Install Android components
-        run: |
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;34.0.0" "platform-tools"
-
-      - name: Setup Android NDK
-        run: |
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip -o android-ndk-r25b-linux.zip -d $HOME/android-sdk
-          mv $HOME/android-sdk/android-ndk-r25b $HOME/android-sdk/ndk-bundle
-          rm android-ndk-r25b-linux.zip
-
-      - name: Fix NDK Python 3 compatibility
-        run: |
-          # Fix the problematic file
-          sed -i "s/print '\(.*\)'/print('\1')/g" $HOME/android-sdk/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/share/clang/run-find-all-symbols.py
-          
-          # Remove other problematic Python 2 files if needed
-          rm -f $HOME/android-sdk/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/share/clang/*.py
-
-      - name: Set environment variables
-        run: |
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk-bundle" >> $GITHUB_ENV
-          echo "PATH=$PATH:$HOME/android-sdk/platform-tools" >> $GITHUB_ENV
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.36 pyjnius==1.6.1
-
-      - name: Create buildozer.spec
-        run: |
-          cat > buildozer.spec << 'SPEC'
-          [app]
-          title = MyApp
-          package.name = myapp
-          package.domain = com.example
-          source.dir = .
-          source.include_exts = py,png,jpg,kv,atlas
-          version = 1.0.0
-          requirements = python3,kivy
-          orientation = portrait
-          fullscreen = 0
-          android.api = 33
-          android.minapi = 21
-          android.sdk_path = $HOME/android-sdk
-          android.ndk_path = $HOME/android-sdk/ndk-bundle
-          android.sdk_build_tools = 34.0.0
-          android.permissions = INTERNET
-          p4a.branch = master
-          SPEC
-
-      - name: Build APK with Buildozer
-        run: |
-          buildozer -v android debug
-
-      - name: Find and upload APK
-        run: |
-          mkdir -p bin
-          find . -name '*.apk' -exec mv {} bin/ \;
-          echo "APK files moved to bin directory:"
-          ls -lh bin/
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyApp-debug.apk
-          path: bin/*.apk
+[app]
+title = MyApp
+package.name = myapp
+package.domain = com.example
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas
+version = 1.0.0
+requirements = python3,kivy==2.1.0,pyjnius==1.6.1
+orientation = portrait
+fullscreen = 0
+android.api = 33
+android.minapi = 21
+android.sdk_path = /data/data/com.termux/files/home/android_environment/sdk
+android.ndk_path = /data/data/com.termux/files/home/android_environment/ndk-r25b
+android.sdk_build_tools = 34.0.0
+android.accept_sdk_license = True
+android.archs = arm64-v8a,armeabi-v7a
+p4a.branch = master
+android.p4a_dir = /data/data/com.termux/files/home/.buildozer/android/platform/python-for-android
+android.allow_backup = true
+android.allow_storage_access = true
+android.enable_androidx = true
 EOF
 
-# Update the workflow
-mv fixed_workflow.yml .github/workflows/android-build.yml
-git add .github/workflows/android-build.yml
-git commit -m "Fix NDK Python 3 compatibility issue"
-git push origin main
+# הרצה עם הגדרות אופטימליות
+cd ~/Myapp
+CFLAGS="-I/data/data/com.termux/files/usr/include" \
+LDFLAGS="-L/data/data/com.termux/files/usr/lib" \
+buildozer -v android debug
