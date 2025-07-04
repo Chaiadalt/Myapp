@@ -1,5 +1,4 @@
-
- name: Android CI - The Final Stand
+name: Android CI - The Final Stand
 on:
   push:
     branches: [ main ]
