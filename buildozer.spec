@@ -15,4 +15,9 @@ fullscreen = 0
 log_level = 2
 warn_on_root = 1
 
+# --- Android specific settings ---
+# Default NDK version is r25b. For other versions, see https://github.com/actions/python-versions
+android.ndk_path = /usr/lib/android-ndk
+android.sdk_path = /usr/lib/android-sdk
+
 
