@@ -1,4 +1,4 @@
-name: Android CI - Final Stable Build
+name: Android CI - The Final Final Build
 on:
   push:
     branches: [ main ]
@@ -15,7 +15,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install All Dependencies with Stable Versions
+    - name: Install All System and Compilation Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
@@ -36,9 +36,14 @@ jobs:
         unzip -q -o android-ndk.zip -d "android_environment"
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
         rm android-ndk.zip
+        wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.tar.gz -O ant.tar.gz
+        tar -xzf ant.tar.gz -C "android_environment"
+        mv "android_environment/apache-ant-1.9.4" "android_environment/ant"
+        rm ant.tar.gz
 
     - name: Create buildozer.spec and Build
       run: |
+        export PATH="$PWD/android_environment/ant/bin:$PATH"
         echo "[buildozer]" > buildozer.spec
         echo "warn_on_root = 0" >> buildozer.spec
         echo "[app]" >> buildozer.spec
@@ -47,20 +52,20 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
-        echo "requirements = python3,kivy==2.2.1" >> buildozer.spec
-        # התיקון: חוזרים לגרסה הכי עדכנית של python-for-android
-        echo "p4a.branch = master" >> buildozer.spec
-
+        echo "requirements = python3,kivy" >> buildozer.spec
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
 
+        # התיקון הכירורגי: מוחקים את הקובץ הבעייתי
+        rm -f ./android_environment/ant/bin/runant.py
+
+        # הרצת הבנייה
         buildozer -v android debug
 
     - name: Find and Move APK
       run: |
-        echo "Searching for the generated APK file..."
         find . -name "*.apk" -print
         find . -name "*.apk" -exec mv {} ./MyApp.apk \;
 
