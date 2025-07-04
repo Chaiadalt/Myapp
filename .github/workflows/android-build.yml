@@ -32,7 +32,6 @@ jobs:
         rm cmdline-tools.zip
         yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
         android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
-        
         wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
         unzip -o android-ndk.zip -d "android_environment"
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
@@ -48,12 +47,14 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
+        # התיקון: התעלמות רקורסיבית מכל הקבצים בתיקיית ה-NDK
+        echo "source.exclude_patterns = android_environment/ndk-r25b/**/*" >> buildozer.spec
         echo "requirements = python3,kivy" >> buildozer.spec
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
-        
+
         buildozer -v android debug 2>&1 | tee build_log.txt
 
     - name: Upload APK on Success
@@ -62,7 +63,7 @@ jobs:
       with:
         name: MyApp-debug.apk
         path: bin/*.apk
-        
+
     - name: Upload Build Log on Failure
       if: failure()
       uses: actions/upload-artifact@v4
