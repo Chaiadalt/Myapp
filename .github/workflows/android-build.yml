@@ -14,9 +14,24 @@ jobs:
     - name: Setup Build Environment
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev
+        sudo apt-get install -y openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev unzip
         python3 -m pip install --upgrade pip wheel setuptools
         pip3 install buildozer cython==0.29.36 pyjnius==1.6.1
+    
+    - name: Create Android environment
+      run: |
+        mkdir -p "android_environment/sdk"
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -q -o cmdline-tools.zip -d "android_environment/sdk"
+        mv "android_environment/sdk/cmdline-tools" "android_environment/sdk/tools"
+        rm cmdline-tools.zip
+        yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
+        android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
+        
+        wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
+        unzip -q -o android-ndk.zip -d "android_environment"
+        mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
+        rm android-ndk.zip
     
     - name: Create buildozer.spec
       run: |
@@ -37,9 +52,9 @@ jobs:
         android.minapi = 21
         android.sdk_build_tools = 34.0.0
         android.accept_sdk_license = True
-        # שינויים קריטיים למטה!
-        android.build_dir = ./build_dir
-        bin_dir = ./output_bin
+        android.sdk_path = ./android_environment/sdk
+        android.ndk_path = ./android_environment/ndk-r25b
+        android.skip_update = True
         EOL
         
         cat buildozer.spec
@@ -48,11 +63,9 @@ jobs:
       run: |
         buildozer -v android debug
         
-        # חפש את קובץ ה-APK בכל התיקיות
-        echo "=== Searching for APK files ==="
+        echo "=== APK search results ==="
         find . -name "*.apk" -print
         
-        # העתק את כל קבצי ה-APK לתיקייה סטנדרטית
         mkdir -p apk_output
         find . -name "*.apk" -exec cp {} apk_output/ \;
     
@@ -61,6 +74,7 @@ jobs:
       with:
         name: MyApp-debug
         path: apk_output/*.apk
+
 
 
 
