@@ -1,4 +1,4 @@
-name: Android CI - The Final Final Build
+name: Android CI - Final Memory Fix
 on:
   push:
     branches: [ main ]
@@ -15,7 +15,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install All System and Compilation Dependencies
+    - name: Install All System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
@@ -25,25 +25,25 @@ jobs:
 
     - name: Create a Local, Self-Contained Android Environment
       run: |
+        # --- SDK Setup ---
         mkdir -p "android_environment/sdk"
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
         unzip -q -o cmdline-tools.zip -d "android_environment/sdk"
         mv "android_environment/sdk/cmdline-tools" "android_environment/sdk/tools"
-        rm cmdline-tools.zip
+        rm cmdline-tools.zip  # <-- התיקון: מחיקת ה-zip כדי לפנות מקום
+
+        # --- Install SDK Components ---
         yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
         android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
+
+        # --- NDK Setup ---
         wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
         unzip -q -o android-ndk.zip -d "android_environment"
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
-        rm android-ndk.zip
-        wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.tar.gz -O ant.tar.gz
-        tar -xzf ant.tar.gz -C "android_environment"
-        mv "android_environment/apache-ant-1.9.4" "android_environment/ant"
-        rm ant.tar.gz
+        rm android-ndk.zip # <-- התיקון: מחיקת ה-zip כדי לפנות מקום
 
     - name: Create buildozer.spec and Build
       run: |
-        export PATH="$PWD/android_environment/ant/bin:$PATH"
         echo "[buildozer]" > buildozer.spec
         echo "warn_on_root = 0" >> buildozer.spec
         echo "[app]" >> buildozer.spec
@@ -58,20 +58,12 @@ jobs:
         echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
 
-        # התיקון הכירורגי: מוחקים את הקובץ הבעייתי
-        rm -f ./android_environment/ant/bin/runant.py
-
-        # הרצת הבנייה
         buildozer -v android debug
 
-    - name: Find and Move APK
-      run: |
-        find . -name "*.apk" -print
-        find . -name "*.apk" -exec mv {} ./MyApp.apk \;
-
-    - name: Upload Final APK
+    - name: Find and Upload APK
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: MyApp-APK
-        path: ./MyApp.apk
+        path: "**/*.apk"
         if-no-files-found: error
