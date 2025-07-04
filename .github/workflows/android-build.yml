@@ -1,14 +1,11 @@
-name: Android CI with APK Detection
-
+name: Android CI Final Detective
 on:
   push:
     branches: [ main ]
-
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -59,19 +56,14 @@ jobs:
 
     - name: 🕵️ Find the APK - The Detective Step
       if: always()
-      run: |
-        echo "Listing all files in the project directory:"
-        ls -R
-        echo "Searching for .apk files:"
-        find . -name "*.apk"
+      run: ls -R
 
-    - name: Upload APK if found
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: MyApp-debug.apk
-        path: |
-          bin/*.apk
-          **/*.apk
-        if-no-files-found: warn
+        path: bin/*.apk
+        if-no-files-found: ignore
+
 
 
