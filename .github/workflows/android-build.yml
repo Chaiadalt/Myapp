@@ -6,66 +6,46 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Install All System and Compilation Dependencies
+    
+    - name: Setup Build Environment
       run: |
-        sudo apt-get update
-        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
-        libltdl-dev libtool pkg-config autoconf automake
-        python -m pip install --upgrade pip
-        pip install 'buildozer==1.5.0' 'cython==0.29.36' 'pyjnius==1.6.1'
-
-    - name: Create a Local, Self-Contained Android Environment
-      run: |
-        mkdir -p "android_environment/sdk"
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip -q -o cmdline-tools.zip -d "android_environment/sdk"
-        mv "android_environment/sdk/cmdline-tools" "android_environment/sdk/tools"
-        rm cmdline-tools.zip
-        yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
-        android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
-
-        wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
-        unzip -q -o android-ndk.zip -d "android_environment"
-        mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
-        rm android-ndk.zip
-
-    - name: Create buildozer.spec and Build
+        sudo apt-get update -y
+        sudo apt-get install -y openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev
+        python3 -m pip install --upgrade pip wheel setuptools
+        pip3 install buildozer cython==0.29.36 pyjnius==1.6.1
+    
+    - name: Create buildozer.spec
       run: |
         echo "[buildozer]" > buildozer.spec
-        echo "warn_on_root = 0" >> buildozer.spec
+        echo "log_level = 2" >> buildozer.spec
+        echo "" >> buildozer.spec
         echo "[app]" >> buildozer.spec
         echo "title = MyApp" >> buildozer.spec
         echo "package.name = myapp" >> buildozer.spec
         echo "package.domain = com.example" >> buildozer.spec
-        echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
-        echo "requirements = python3,kivy" >> buildozer.spec
-        echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
-        echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
-        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
+        echo "source.include_exts = py,png,jpg,kv,atlas" >> buildozer.spec
+        echo "version = 1.0.0" >> buildozer.spec
+        echo "requirements = python3,kivy==2.1.0" >> buildozer.spec
+        echo "orientation = portrait" >> buildozer.spec
         echo "android.api = 33" >> buildozer.spec
-
-        buildozer -v android debug 2>&1 | tee build_log.txt
-
-    - name: Upload APK on Success
-      if: success()
+        echo "android.minapi = 21" >> buildozer.spec
+        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
+        echo "android.accept_sdk_license = True" >> buildozer.spec
+    
+    - name: Build APK
+      run: |
+        buildozer -v android debug
+    
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: MyApp-debug.apk
+        name: MyApp-debug
         path: bin/*.apk
 
-    - name: Upload Build Log on Failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-log-on-failure
-        path: build_log.txt
+
+
