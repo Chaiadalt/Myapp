@@ -21,8 +21,7 @@ jobs:
         sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
         libltdl-dev libtool pkg-config autoconf automake
         python -m pip install --upgrade pip
-        # מקבעים גרסאות יציבות של כלי הבנייה
-        pip install 'buildozer==1.5.0' 'cython==0.29.36' 'pyjnius==1.6.1'
+        pip install 'buildozer==1.5.0' 'cython==3.0.10' 'pyjnius==1.6.1'
 
     - name: Create a Local, Self-Contained Android Environment
       run: |
@@ -48,9 +47,9 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
-        # התיקון: מקבעים את הגרסאות לגרסאות יציבות ומוכחות
         echo "requirements = python3,kivy==2.2.1" >> buildozer.spec
-        echo "p4a.branch = stable" >> buildozer.spec
+        # התיקון: חוזרים לגרסה הכי עדכנית של python-for-android
+        echo "p4a.branch = master" >> buildozer.spec
 
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
@@ -59,9 +58,15 @@ jobs:
 
         buildozer -v android debug
 
-    - name: Upload APK
+    - name: Find and Move APK
+      run: |
+        echo "Searching for the generated APK file..."
+        find . -name "*.apk" -print
+        find . -name "*.apk" -exec mv {} ./MyApp.apk \;
+
+    - name: Upload Final APK
       uses: actions/upload-artifact@v4
       with:
-        name: MyApp-debug.apk
-        path: "**/*.apk"
+        name: MyApp-APK
+        path: ./MyApp.apk
         if-no-files-found: error
