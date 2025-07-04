@@ -1,108 +1,69 @@
-#!/bin/bash
-
-cat > final_fix_workflow.yml << 'EOF'
-name: Android CI
-
+name: Android CI - The Final Build
 on:
   push:
     branches: [ main ]
-
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant
+    - name: Install All System, Python, and Compilation Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk git libssl-dev libffi-dev zlib1g-dev libncurses5-dev ccache unzip ant \
+        libltdl-dev libtool pkg-config autoconf automake
+        python -m pip install --upgrade pip
+        pip install 'buildozer==1.5.0' 'cython==3.0.10' 'pyjnius==1.6.1'
 
-      - name: Setup Android SDK
-        run: |
-          mkdir -p $HOME/android-sdk
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip -o cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          rm cmdline-tools.zip
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+    - name: Create a Local, Self-Contained Android Environment
+      run: |
+        mkdir -p "android_environment/sdk"
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -q -o cmdline-tools.zip -d "android_environment/sdk"
+        mv "android_environment/sdk/cmdline-tools" "android_environment/sdk/tools"
+        rm cmdline-tools.zip
+        yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
+        android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
+        wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
+        unzip -q -o android-ndk.zip -d "android_environment"
+        mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
+        rm android-ndk.zip
 
-          # Accept licenses manually
-          mkdir -p $HOME/.android/licenses
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $HOME/.android/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/.android/licenses/android-sdk-license
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/.android/licenses/android-sdk-preview-license
+    - name: Create buildozer.spec and Build
+      run: |
+        echo "[buildozer]" > buildozer.spec
+        echo "warn_on_root = 0" >> buildozer.spec
+        echo "[app]" >> buildozer.spec
+        echo "title = MyApp" >> buildozer.spec
+        echo "package.name = myapp" >> buildozer.spec
+        echo "package.domain = com.example" >> buildozer.spec
+        echo "version = 1.0.0" >> buildozer.spec
+        echo "source.dir = ." >> buildozer.spec
+        echo "requirements = python3,kivy" >> buildozer.spec
+        echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
+        echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
+        echo "android.sdk_build_tools = 34.0.0" >> buildozer.spec
+        echo "android.api = 33" >> buildozer.spec
 
-      - name: Install Android components
-        run: |
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;34.0.0" "platform-tools"
+        buildozer -v android debug
 
-      - name: Setup Android NDK
-        run: |
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip -o android-ndk-r25b-linux.zip -d $HOME/android-sdk
-          mv $HOME/android-sdk/android-ndk-r25b $HOME/android-sdk/ndk-bundle
-          rm android-ndk-r25b-linux.zip
+    - name: Find and Move APK
+      run: |
+        echo "Searching for the generated APK file..."
+        # Find the APK in any subdirectory and move it to the root
+        find . -name "*.apk" -exec mv {} ./MyApp.apk \;
 
-      - name: Set environment variables
-        run: |
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk-bundle" >> $GITHUB_ENV
-          echo "PATH=$PATH:$HOME/android-sdk/platform-tools" >> $GITHUB_ENV
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.36 pyjnius==1.6.1
-
-      - name: Create buildozer.spec
-        run: |
-          cat > buildozer.spec << 'SPEC'
-          [app]
-          title = MyApp
-          package.name = myapp
-          package.domain = com.example
-          source.dir = .
-          source.include_exts = py,png,jpg,kv,atlas
-          version = 1.0.0
-          requirements = python3,kivy
-          orientation = portrait
-          fullscreen = 0
-          android.api = 33
-          android.minapi = 21
-          android.sdk_path = $HOME/android-sdk
-          android.ndk_path = $HOME/android-sdk/ndk-bundle
-          android.sdk_build_tools = 34.0.0
-          android.permissions = INTERNET
-          p4a.branch = master
-          SPEC
-
-      - name: Build APK with Buildozer
-        run: |
-          buildozer -v android debug
-
-      - name: Find and upload APK
-        run: |
-          mkdir -p bin
-          find . -name '*.apk' -exec mv {} bin/ \;
-          echo "APK files moved to bin directory:"
-          ls -lh bin/
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyApp-debug.apk
-          path: bin/*.apk
-EOF
-
-# Update repository
-git add .github/workflows/final_fix_workflow.yml
-git commit -m "Final fix: Manual license acceptance + NDK 25b + Build-Tools 34"
-git push origin main
+    - name: Upload Final APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyApp-APK
+        path: ./MyApp.apk
+        if-no-files-found: error # If the file isn't found, fail the build.
