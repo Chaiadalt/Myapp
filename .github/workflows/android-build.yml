@@ -26,14 +26,15 @@ jobs:
     - name: Create a Local, Self-Contained Android Environment
       run: |
         mkdir -p "android_environment/sdk"
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip -o cmdline-tools.zip -d "android_environment/sdk"
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -q -o cmdline-tools.zip -d "android_environment/sdk"
         mv "android_environment/sdk/cmdline-tools" "android_environment/sdk/tools"
         rm cmdline-tools.zip
         yes | android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" --licenses
         android_environment/sdk/tools/bin/sdkmanager --sdk_root="android_environment/sdk" "platforms;android-33" "build-tools;34.0.0" "platform-tools"
-        wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
-        unzip -o android-ndk.zip -d "android_environment"
+
+        wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O android-ndk.zip
+        unzip -q -o android-ndk.zip -d "android_environment"
         mv "android_environment/android-ndk-r25b" "android_environment/ndk-r25b"
         rm android-ndk.zip
 
@@ -47,8 +48,6 @@ jobs:
         echo "package.domain = com.example" >> buildozer.spec
         echo "version = 1.0.0" >> buildozer.spec
         echo "source.dir = ." >> buildozer.spec
-        # התיקון: התעלמות רקורסיבית מכל הקבצים בתיקיית ה-NDK
-        echo "source.exclude_patterns = android_environment/ndk-r25b/**/*" >> buildozer.spec
         echo "requirements = python3,kivy" >> buildozer.spec
         echo "android.sdk_path = ./android_environment/sdk" >> buildozer.spec
         echo "android.ndk_path = ./android_environment/ndk-r25b" >> buildozer.spec
