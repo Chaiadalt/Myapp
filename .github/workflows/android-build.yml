@@ -36,6 +36,8 @@ jobs:
         chmod +x $ANDROID_HOME/build-tools/34.0.0/apksigner
 
     - name: Build with Buildozer
+      env:
+        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
       run: |
         buildozer -v android clean
         buildozer -v android debug
@@ -45,6 +47,5 @@ jobs:
       with:
         name: package
         path: bin/*.apk
-
 
 
