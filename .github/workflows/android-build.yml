@@ -1,4 +1,4 @@
-name: Android CI - The Final Build
+name: Android CI - Final Definitive Build
 on:
   push:
     branches: [ main ]
@@ -56,14 +56,16 @@ jobs:
         buildozer -v android debug
 
     - name: Find and Move APK
+      # אחרי שהבנייה מסתיימת, אנחנו מוצאים את ה-APK ומעבירים אותו למיקום ידוע
       run: |
         echo "Searching for the generated APK file..."
-        # Find the APK in any subdirectory and move it to the root
+        find . -name "*.apk" -print
         find . -name "*.apk" -exec mv {} ./MyApp.apk \;
 
     - name: Upload Final APK
+      # מעלים את ה-APK מהמיקום הידוע והבטוח
       uses: actions/upload-artifact@v4
       with:
         name: MyApp-APK
         path: ./MyApp.apk
-        if-no-files-found: error # If the file isn't found, fail the build.
+        if-no-files-found: error # אם הקובץ לא נמצא, הריצה תיכשל ותודיע לנו
