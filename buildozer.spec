@@ -1,4 +1,4 @@
- [app]
+[app]
 title = My App
 package.name = myapp
 package.domain = org.test
