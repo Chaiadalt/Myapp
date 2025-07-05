@@ -1,15 +1,33 @@
-image: mingc/android-build-box:latest
+ name: Build Android APK
 
-tasks:
-  - init: |
-      pip install buildozer
-      buildozer init
-    command: |
-      yes | sdkmanager --licenses
-      buildozer android debug
+on:
+  push:
+    branches: [ main, master ]
 
-ports:
-  - port: 8080
-    onOpen: open-preview
+jobs:
+  build-android:
+    name: Build APK with Buildozer
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v2
+        with:
+          path:.buildozer_global
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: yes | buildozer -v android debug
+          buildozer_version: stable
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: YourAppName-APK
+          path: ${{ steps.buildozer.outputs.filename }}
