@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ] # הפעל את הבנייה בדחיפה לענף הראשי
+    branches: [ main, master ]
 
 jobs:
   build-android:
