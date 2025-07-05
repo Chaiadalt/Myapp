@@ -1,0 +1,21 @@
+פרויקט הגשה: אפליקציית אנדרואיד
+שם הסטודנט: Chaiadalt
+תאריך הגשה: $(date +"%Y-%m-%d")
+
+פרטים טכניים:
+- נבנה עם Kivy for Android
+- גרסה: 1.0
+- חבילה: org.test.myapp
+
+קוד האפליקציה:
+from kivy.app import App
+from kivy.uix.label import Label
+
+class MainApp(App):
+    def build(self):
+        return Label(text="Hello, World! My App Works!")
+
+if __name__ == '__main__':
+    MainApp().run()
+
+קובץ APK מצורף: myapp-debug.apk
