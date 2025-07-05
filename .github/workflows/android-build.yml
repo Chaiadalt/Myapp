@@ -30,10 +30,10 @@ jobs:
     
     - name: Grant Execute Permissions to build-tools
       run: |
-        chmod +x $ANDROID_HOME/build-tools/34.0.0/aapt
-        chmod +x $ANDROID_HOME/build-tools/34.0.0/aapt2
-        chmod +x $ANDROID_HOME/build-tools/34.0.0/zipalign
-        chmod +x $ANDROID_HOME/build-tools/34.0.0/apksigner
+        sudo chmod +x $ANDROID_HOME/build-tools/34.0.0/aapt
+        sudo chmod +x $ANDROID_HOME/build-tools/34.0.0/aapt2
+        sudo chmod +x $ANDROID_HOME/build-tools/34.0.0/zipalign
+        sudo chmod +x $ANDROID_HOME/build-tools/34.0.0/apksigner
 
     - name: Build with Buildozer
       env:
@@ -47,6 +47,5 @@ jobs:
       with:
         name: package
         path: bin/*.apk
-
 
 
