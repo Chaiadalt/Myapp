@@ -7,7 +7,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ArtemSBulgakov/buildozer-action@v1
         with:
-          command: buildozer android debug
+          command: |
+            sed -i "s/requirements = .*/requirements = python==3.9,kivy/" buildozer.spec
+            buildozer android debug
       - uses: actions/upload-artifact@v4
         with:
           name: APK
