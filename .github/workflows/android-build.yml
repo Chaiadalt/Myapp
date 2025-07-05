@@ -1,16 +1,46 @@
 name: Build APK
+
 on: [workflow_dispatch]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ArtemSBulgakov/buildozer-action@v1
-        with:
-          command: |
-            sed -i "s/requirements = .*/requirements = python==3.9,kivy/" buildozer.spec
-            buildozer android debug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: APK
-          path: '*.apk'
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-11-jdk
+        
+    - name: Install Buildozer
+      run: pip install buildozer
+        
+    - name: Fix jnius error
+      run: |
+        find ~/.buildozer -name jnius_export_class.h -exec sed -i 's/from long import Py_jlong/from long long import Py_jlong/' {} \;
+        
+    - name: Build APK
+      run: |
+        buildozer init
+        echo "[app]" > buildozer.spec
+        echo "title = MyApp" >> buildozer.spec
+        echo "package.name = myapp" >> buildozer.spec
+        echo "package.domain = org.mydomain" >> buildozer.spec
+        echo "source.dir = ." >> buildozer.spec
+        echo "requirements = python==3.9,kivy" >> buildozer.spec
+        echo "" >> buildozer.spec
+        echo "[buildozer]" >> buildozer.spec
+        echo "log_level = 2" >> buildozer.spec
+        echo "android.accept_sdk_license = True" >> buildozer.spec
+        buildozer android debug
+        
+    - uses: actions/upload-artifact@v4
+      with:
+        name: APK-Package
+        path: bin/*.apk
